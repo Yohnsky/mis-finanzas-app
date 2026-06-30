@@ -302,8 +302,11 @@
   </div>
 </header>
 
-<div class="container">
-  <div class="tabs">
+<div class="tabs">
+    <button class="tab" onclick="showTab('agregar',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Agregar
+    </button>
     <button class="tab active" onclick="showTab('resumen',this)">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Resumen
@@ -328,12 +331,8 @@
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
       Objetivos
     </button>
-    <button class="tab" onclick="showTab('agregar',this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      Agregar
-    </button>
   </div>
-
+ 
   <!-- ══ RESUMEN ══ -->
   <div id="tab-resumen" class="section active">
     <div class="section-header">
