@@ -280,6 +280,17 @@
   .flujo-acum-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:.5px solid var(--border);font-size:13px}
   .flujo-acum-row:last-child{border-bottom:none}
   .flujo-bar-inline{height:4px;border-radius:2px;background:var(--green);margin-top:3px}
+  /* TOGGLE PAGADO */
+.toggle-wrap{display:flex;align-items:center;margin-left:10px;flex-shrink:0}
+.toggle{position:relative;display:inline-block;width:36px;height:20px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:#A32D2D;border-radius:20px;transition:.3s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+input:checked + .toggle-slider{background:#3B6D11}
+input:checked + .toggle-slider:before{transform:translateX(16px)}
+.row-paid{background:var(--green-bg)!important;border-radius:var(--radius);padding:0 8px}
+.row-paid .row-label{color:var(--green-text)!important}
+.row-paid .row-value{color:var(--green)!important}
 </style>
 </head>
 <body>
@@ -662,6 +673,8 @@ const STORAGE_KEY = 'mis-finanzas-v1';
 let barChartInst=null, lineChartInst=null, proyChartInst=null, libChartInst=null;
 let iCount=0, gCount=0, cCount=0, rCount=0;
 let pendingDelete=null;
+  let pagosEstado={};
+let pagosEstadoMes='';
 let editICount=0, editGCount=0, editCCount=0, editRCount=0, editingMes=null;
 
 const defaultData = {
@@ -801,6 +814,7 @@ function generarEstado(d, t, meses, mesActual) {
 
 function renderResumen(){
   const mes = document.getElementById('mes-resumen').value;
+  if(pagosEstadoMes !== mes){ pagosEstado={}; pagosEstadoMes=mes; }
   document.getElementById('resumen-titulo').textContent = mes || '–';
   const d = appData.meses[mes]; if (!d) return;
   const t = calcTotales(d);
@@ -833,9 +847,15 @@ function renderResumen(){
   document.getElementById('ingresos-list').innerHTML =
     ingSrc.map(i => `<div class="row"><span class="row-label">${i.nombre}</span><span class="row-value green">${fmt(i.monto)}</span></div>`).join('') +
     (ingSrc.length > 1 ? `<div class="row"><span class="row-label" style="font-weight:500">Total ingresos</span><span class="row-value green">${fmt(ingresoTotal)}</span></div>` : '');
-  document.getElementById('gastos-fijos-list').innerHTML =
-    d.gastos.filter(g => g.tipo === 'fijo').map(g => `<div class="row"><span class="row-label">${g.nombre}<span class="badge bf">fijo</span></span><span class="row-value red">${fmt(g.monto)}</span></div>`).join('') +
-    d.creditos.map(c => `<div class="row"><span class="row-label">${c.nombre}<span class="badge bc">cuota ${c.cuotaActual}/${c.cuotaTotal}</span></span><span class="row-value red">${fmt(c.monto)}</span></div>`).join('') +
+ document.getElementById('gastos-fijos-list').innerHTML =
+    d.gastos.filter(g => g.tipo === 'fijo').map(g => {
+      const pid='gf_'+g.nombre; const paid=!!pagosEstado[pid];
+      return `<div class="row ${paid?'row-paid':''}"><span class="row-label">${g.nombre}<span class="badge bf">fijo</span></span><span class="row-value ${paid?'':'red'}">${fmt(g.monto)}</span><div class="toggle-wrap"><label class="toggle"><input type="checkbox" ${paid?'checked':''} onchange="togglePago('${pid}')"><span class="toggle-slider"></span></label></div></div>`;
+    }).join('') +
+    d.creditos.map(c => {
+      const pid='cr_'+c.nombre; const paid=!!pagosEstado[pid];
+      return `<div class="row ${paid?'row-paid':''}"><span class="row-label">${c.nombre}<span class="badge bc">cuota ${c.cuotaActual}/${c.cuotaTotal}</span></span><span class="row-value ${paid?'':'red'}">${fmt(c.monto)}</span><div class="toggle-wrap"><label class="toggle"><input type="checkbox" ${paid?'checked':''} onchange="togglePago('${pid}')"><span class="toggle-slider"></span></label></div></div>`;
+    }).join('') +
     `<div class="row"><span class="row-label" style="font-weight:500">Subtotal</span><span class="row-value red">${fmt(t.tf + t.tc)}</span></div>`;
 
   const extras = d.gastos.filter(g => g.tipo === 'extra');
@@ -849,7 +869,10 @@ function renderResumen(){
 
   renderBarChart(d, t);
 }
-
+function togglePago(id){
+  pagosEstado[id]=!pagosEstado[id];
+  renderResumen();
+}
 function renderBarChart(d,t){
   const ctx=document.getElementById('barChart').getContext('2d');
   if(barChartInst) barChartInst.destroy();
