@@ -202,7 +202,7 @@
 
     <section class="panel" role="tabpanel" aria-labelledby="tab-debts" id="panel-debts" hidden>
       <div class="page-head">
-        <div><h1>Deudas y estrategia de pago</h1><p>Simulación mensual basada en saldo, tasa anual y pago mínimo.</p></div>
+        <div><h1>Deudas y estrategia de pago</h1><p>Controla cuotas pagadas y pendientes. La tasa es opcional y solo mejora algunas proyecciones.</p></div>
         <div class="page-actions"><button class="btn btn-primary" id="add-debt" type="button">Nueva deuda</button></div>
       </div>
       <div id="debts-empty"></div>
@@ -214,14 +214,14 @@
             <div class="form-group"><label class="form-label" for="extra-payment">Pago extra mensual</label><input class="input" id="extra-payment" type="number" min="0" step="1000" value="0"></div>
           </div>
           <div class="three-col" id="strategy-cards"></div>
-          <div class="notice warn" id="rate-warning" hidden style="margin-top:12px">La estrategia avalancha requiere una tasa conocida para cada deuda activa. Completa las tasas para compararla correctamente.</div>
+          <div class="notice warn" id="rate-warning" hidden style="margin-top:12px">Puedes usar la app sin informar tasas. Solo la estrategia avalancha quedará deshabilitada cuando falten tasas; pago normal y bola de nieve seguirán disponibles.</div>
         </div>
         <div class="two-col">
           <div class="card"><h2 class="card-title">Orden estimado de término</h2><div id="payoff-order"></div></div>
           <div class="card"><h2 class="card-title">Evolución del saldo</h2><div class="chart-box small"><canvas id="debt-chart" aria-label="Proyección del saldo de deudas" role="img"></canvas></div></div>
         </div>
         <div class="card"><h2 class="card-title">Tus deudas</h2><div id="debt-list"></div></div>
-        <div class="notice">La simulación supone pagos puntuales, tasa constante y ausencia de cargos adicionales. Actualiza el saldo desde la cartola o estado oficial: marcar una cuota como pagada no equivale necesariamente a descontar todo ese monto del capital.</div>
+        <div class="notice">Las cuotas pagadas muestran avance y alivio financiero. La tasa anual es opcional: déjala vacía para préstamos familiares, créditos de terceros, deudas sin interés o cuando no la conozcas. Si ingresas un saldo oficial, actualízalo periódicamente; una cuota no siempre reduce el capital por el mismo monto.</div>
       </div>
     </section>
 
@@ -255,13 +255,16 @@
 
   <dialog id="debt-dialog" aria-labelledby="debt-dialog-title">
     <form method="dialog" class="dialog-inner" id="debt-form" novalidate>
-      <div class="dialog-head"><div><h2 id="debt-dialog-title">Nueva deuda</h2><p>Usa el saldo actual, no el monto original del crédito.</p></div><button class="icon-btn" value="cancel" aria-label="Cerrar" type="submit"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="dialog-head"><div><h2 id="debt-dialog-title">Nueva deuda</h2><p>Registra lo que conozcas. Para préstamos informales puedes usar cuota y cantidad de cuotas sin informar tasa.</p></div><button class="icon-btn" value="cancel" aria-label="Cerrar" type="submit"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
       <input type="hidden" id="debt-id">
       <div class="form-grid">
-        <div class="form-group full"><label class="form-label" for="debt-name">Nombre</label><input class="input" id="debt-name" maxlength="80" required placeholder="Ej.: Crédito de consumo"></div>
-        <div class="form-group"><label class="form-label" for="debt-balance">Saldo actual</label><input class="input" id="debt-balance" type="number" min="1" step="1" required></div>
-        <div class="form-group"><label class="form-label" for="debt-minimum">Pago mínimo mensual</label><input class="input" id="debt-minimum" type="number" min="1" step="1" required></div>
-        <div class="form-group"><label class="form-label" for="debt-rate">Tasa anual (%)</label><input class="input" id="debt-rate" type="number" min="0" max="200" step="0.01" placeholder="Déjalo vacío si no la conoces"><span class="form-hint">Necesaria para una avalancha confiable.</span></div>
+        <div class="form-group full"><label class="form-label" for="debt-name">Nombre</label><input class="input" id="debt-name" maxlength="80" required placeholder="Ej.: Préstamo familiar o crédito de consumo"></div>
+        <div class="form-group"><label class="form-label" for="debt-type">Tipo de deuda</label><select class="input" id="debt-type"><option value="bank">Crédito bancario</option><option value="card">Tarjeta o línea de crédito</option><option value="family">Préstamo familiar</option><option value="thirdParty">Crédito a nombre de un tercero</option><option value="other">Otro compromiso</option></select></div>
+        <div class="form-group"><label class="form-label" for="debt-minimum">Cuota o pago mensual</label><input class="input" id="debt-minimum" type="number" min="1" step="1" required></div>
+        <div class="form-group"><label class="form-label" for="debt-paid-installments">Cuotas pagadas</label><input class="input" id="debt-paid-installments" type="number" min="0" step="1" placeholder="Opcional"></div>
+        <div class="form-group"><label class="form-label" for="debt-total-installments">Cuotas totales</label><input class="input" id="debt-total-installments" type="number" min="1" step="1" placeholder="Opcional"></div>
+        <div class="form-group"><label class="form-label" for="debt-balance">Saldo actual</label><input class="input" id="debt-balance" type="number" min="0" step="1" placeholder="Opcional si completas las cuotas"><span class="form-hint">Si lo dejas vacío, se estimará con cuotas pendientes × cuota mensual.</span></div>
+        <div class="form-group"><label class="form-label" for="debt-rate">Tasa anual (%)</label><input class="input" id="debt-rate" type="number" min="0" max="200" step="0.01" placeholder="Opcional"><span class="form-hint">Déjala vacía si no existe, no la conoces o el préstamo es informal.</span></div>
         <div class="form-group"><label class="form-label" for="debt-day">Día de vencimiento</label><input class="input" id="debt-day" type="number" min="1" max="31" step="1" placeholder="Opcional"></div>
       </div>
       <div class="dialog-actions"><button class="btn" value="cancel" type="submit">Cancelar</button><button class="btn btn-primary" id="save-debt" value="default" type="submit">Guardar deuda</button></div>
@@ -347,7 +350,7 @@
       note:cleanText(raw.note,140),
       incomes:safeArray(raw.incomes).map(x=>({id:cleanText(x.id,80)||uid('inc'),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount))})).filter(x=>x.name&&x.amount>0),
       expenses:safeArray(raw.expenses).map(x=>({id:cleanText(x.id,80)||uid('exp'),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount)),kind:x.kind==='discretionary'?'discretionary':'essential'})).filter(x=>x.name&&x.amount>0),
-      debtPayments:safeArray(raw.debtPayments).map(x=>({id:cleanText(x.id,80)||uid('pay'),debtId:cleanText(x.debtId,80),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount)),paid:Boolean(x.paid)})).filter(x=>x.name&&x.amount>0),
+      debtPayments:safeArray(raw.debtPayments).map(x=>({id:cleanText(x.id,80)||uid('pay'),debtId:cleanText(x.debtId,80),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount)),paid:Boolean(x.paid),installmentNumber:Math.max(0,Math.round(num(x.installmentNumber))),countedInstallment:Boolean(x.countedInstallment)})).filter(x=>x.name&&x.amount>0),
       savings:safeArray(raw.savings).map(x=>({id:cleanText(x.id,80)||uid('sav'),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount))})).filter(x=>x.name&&x.amount>0),
       createdAt:cleanText(raw.createdAt,40)||new Date().toISOString(),
       updatedAt:cleanText(raw.updatedAt,40)||new Date().toISOString()
@@ -356,11 +359,17 @@
 
   function normalizeDebt(raw={}){
     const rate = raw.annualRate === null || raw.annualRate === '' || typeof raw.annualRate === 'undefined' ? null : clamp(num(raw.annualRate),0,200);
-    const balance = Math.max(0,num(raw.balance));
+    const minimumPayment=Math.max(0,num(raw.minimumPayment));
+    const totalInstallments=Math.max(0,Math.round(num(raw.totalInstallments)));
+    const paidInstallments=totalInstallments>0?clamp(Math.round(num(raw.paidInstallments)),0,totalInstallments):Math.max(0,Math.round(num(raw.paidInstallments)));
+    const rawBalance=Math.max(0,num(raw.balance));
+    const balanceEstimated=Boolean(raw.balanceEstimated)||(rawBalance<=0&&totalInstallments>paidInstallments&&minimumPayment>0);
+    const balance=rawBalance>0?rawBalance:(totalInstallments>paidInstallments?(totalInstallments-paidInstallments)*minimumPayment:0);
+    const installmentsComplete=totalInstallments>0&&paidInstallments>=totalInstallments;
     return {
-      id:cleanText(raw.id,80)||uid('debt'),name:cleanText(raw.name,80),balance,
-      annualRate:rate,minimumPayment:Math.max(0,num(raw.minimumPayment)),dueDay:raw.dueDay?clamp(Math.round(num(raw.dueDay)),1,31):null,
-      status:raw.status==='paid'||balance<=0?'paid':'active',createdAt:cleanText(raw.createdAt,40)||new Date().toISOString(),updatedAt:cleanText(raw.updatedAt,40)||new Date().toISOString()
+      id:cleanText(raw.id,80)||uid('debt'),name:cleanText(raw.name,80),type:['bank','card','family','thirdParty','other'].includes(raw.type)?raw.type:'other',balance,balanceEstimated,
+      annualRate:rate,minimumPayment,dueDay:raw.dueDay?clamp(Math.round(num(raw.dueDay)),1,31):null,paidInstallments,totalInstallments,
+      status:raw.status==='paid'||balance<=0||installmentsComplete?'paid':'active',createdAt:cleanText(raw.createdAt,40)||new Date().toISOString(),updatedAt:cleanText(raw.updatedAt,40)||new Date().toISOString()
     };
   }
 
@@ -405,9 +414,9 @@
         const amount=Math.max(0,num(legacyDebt.monto));
         const mapKey=name.toLowerCase();
         const existing=debtMap.get(mapKey);
-        const migrated={id:existing?.id||uid('debt'),name,balance:remaining*amount,annualRate:null,minimumPayment:amount,dueDay:null,status:remaining>0?'active':'paid',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+        const migrated={id:existing?.id||uid('debt'),name,type:'other',balance:remaining*amount,balanceEstimated:true,annualRate:null,minimumPayment:amount,dueDay:null,paidInstallments:Math.max(0,Math.round(num(legacyDebt.cuotaActual))),totalInstallments:Math.max(0,Math.round(num(legacyDebt.cuotaTotal))),status:remaining>0?'active':'paid',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
         debtMap.set(mapKey,migrated);
-        if(amount>0) debtPayments.push({id:uid('pay'),debtId:migrated.id,name,amount,paid:false});
+        if(amount>0) debtPayments.push({id:uid('pay'),debtId:migrated.id,name,amount,paid:false,installmentNumber:Math.min(migrated.totalInstallments||migrated.paidInstallments+1,migrated.paidInstallments+1),countedInstallment:false});
       }
       data.months[key]=normalizeMonth({incomes,expenses,debtPayments,savings,note:'Migrado desde la versión anterior'});
     }
@@ -416,10 +425,19 @@
     return data;
   }
 
+  function restoreLegacyInstallments(data,legacyRaw){
+    const latestByName=new Map();
+    const entries=Object.entries(legacyRaw?.meses||{}).map(([label,value])=>({key:parseLegacyMonthKey(label),value})).filter(x=>x.key).sort((a,b)=>a.key.localeCompare(b.key));
+    entries.forEach(({value})=>safeArray(value.creditos).forEach(c=>{const name=cleanText(c.nombre,80);if(name)latestByName.set(name.toLowerCase(),c);}));
+    let changed=false;
+    data.debts.forEach(debt=>{if(debt.totalInstallments>0)return;const legacy=latestByName.get(debt.name.toLowerCase());if(!legacy)return;const total=Math.max(0,Math.round(num(legacy.cuotaTotal)));const legacyPaid=total>0?clamp(Math.round(num(legacy.cuotaActual)),0,total):0;if(total<=0)return;const paid=debt.status==='paid'?total:legacyPaid;debt.totalInstallments=total;debt.paidInstallments=paid;if(debt.balance<=0&&paid<total){debt.balance=(total-paid)*debt.minimumPayment;debt.balanceEstimated=true;}debt.status=debt.status==='paid'||paid>=total?'paid':'active';changed=true;});
+    return changed;
+  }
+
   function loadData(){
     try{
       const current=localStorage.getItem(STORAGE_KEY);
-      if(current) return normalizeData(JSON.parse(current));
+      if(current){const data=normalizeData(JSON.parse(current));const legacy=localStorage.getItem(LEGACY_KEY);if(legacy&&restoreLegacyInstallments(data,JSON.parse(legacy)))localStorage.setItem(STORAGE_KEY,JSON.stringify(data));return data;}
       const legacy=localStorage.getItem(LEGACY_KEY);
       if(legacy){ const migrated=migrateLegacy(JSON.parse(legacy)); localStorage.setItem(STORAGE_KEY,JSON.stringify(migrated)); return migrated; }
     }catch(error){ console.error('No fue posible cargar los datos:',error); }
@@ -516,7 +534,7 @@
     const distribution=qs('#home-distribution'); clearElement(distribution); distribution.append(rowItem('Necesidades',fmt(t.essential),{color:'red'}));
     distribution.append(rowItem('Gastos discrecionales',fmt(t.discretionary),{color:'amber'}),rowItem('Pagos de deuda',fmt(t.debt),{color:'blue'}),rowItem('Ahorro planificado',fmt(t.savings),{color:'purple'}),rowItem('Disponible',fmt(t.available),{color:t.available>=0?'green':'red'}));
     renderSimpleList(qs('#home-expenses'),month.expenses,'Sin gastos registrados',x=>rowItem(x.name,fmt(x.amount),{color:x.kind==='essential'?'red':'amber',badges:[badge(x.kind==='essential'?'esencial':'discrecional',x.kind==='essential'?'badge-red':'badge-amber')]}));
-    const debtWrap=qs('#home-debt-payments'); clearElement(debtWrap); if(!month.debtPayments.length) debtWrap.append(emptyState('✅','Sin pagos de deuda','Este mes no tiene pagos de deuda registrados.')); else month.debtPayments.forEach(payment=>{ const sw=document.createElement('label'); sw.className='switch'; const input=document.createElement('input'); input.type='checkbox'; input.checked=payment.paid; input.setAttribute('aria-label',`Marcar ${payment.name} como pagado`); input.addEventListener('change',()=>{payment.paid=input.checked; month.updatedAt=new Date().toISOString(); if(saveData()){renderHome();renderBudget();}}); sw.append(input,text('span','')); debtWrap.append(rowItem(payment.name,fmt(payment.amount),{color:payment.paid?'green':'blue',paid:payment.paid,badges:[badge(payment.paid?'pagado':'pendiente',payment.paid?'badge-green':'badge-blue')],after:sw})); });
+    const debtWrap=qs('#home-debt-payments'); clearElement(debtWrap); if(!month.debtPayments.length) debtWrap.append(emptyState('✅','Sin pagos de deuda','Este mes no tiene pagos de deuda registrados.')); else month.debtPayments.forEach(payment=>{ const sw=document.createElement('label'); sw.className='switch'; const input=document.createElement('input'); input.type='checkbox'; input.checked=payment.paid; input.setAttribute('aria-label',`Marcar ${payment.name} como pagado`); input.addEventListener('change',()=>{payment.paid=input.checked;applyInstallmentChange(payment,input.checked);month.updatedAt=new Date().toISOString();if(saveData()){renderHome();renderBudget();renderDebts();}}); sw.append(input,text('span','')); debtWrap.append(rowItem(payment.name,fmt(payment.amount),{color:payment.paid?'green':'blue',paid:payment.paid,badges:[badge(payment.paid?'pagado':'pendiente',payment.paid?'badge-green':'badge-blue')],after:sw})); });
     renderSimpleList(qs('#home-savings'),month.savings,'Sin ahorro planificado',x=>rowItem(x.name,fmt(x.amount),{color:'purple'}));
     renderHomeChart(t);
   }
@@ -552,12 +570,12 @@
 
   function renderMonthDebtItems(existing=[],includeActive=true){
     const container=qs('#month-debt-items'); clearElement(container); const active=includeActive?getActiveDebts():[]; const byDebt=new Map(existing.map(x=>[x.debtId,x])); const entries=[];
-    active.forEach(debt=>entries.push(byDebt.get(debt.id)||{id:uid('pay'),debtId:debt.id,name:debt.name,amount:debt.minimumPayment,paid:false}));
+    active.forEach(debt=>entries.push(byDebt.get(debt.id)||{id:uid('pay'),debtId:debt.id,name:debt.name,amount:debt.minimumPayment,paid:false,installmentNumber:debt.totalInstallments>0?Math.min(debt.totalInstallments,debt.paidInstallments+1):0,countedInstallment:false}));
     existing.filter(x=>!active.some(d=>d.id===x.debtId)).forEach(x=>entries.push(x));
     qs('#no-active-debts').hidden=entries.length>0;
     entries.forEach(payment=>{
-      const row=document.createElement('div'); row.className='line-item debt-payment'; row.dataset.itemId=payment.id; row.dataset.debtId=payment.debtId||''; row.dataset.name=payment.name;
-      const label=document.createElement('div'); label.append(text('div',payment.name,'row-label')); const debt=appData.debts.find(d=>d.id===payment.debtId); if(debt) label.append(text('div',debt.status==='active'?'Deuda activa':'Registro histórico','row-meta'));
+      const row=document.createElement('div'); row.className='line-item debt-payment'; row.dataset.itemId=payment.id; row.dataset.debtId=payment.debtId||''; row.dataset.name=payment.name; row.dataset.installmentNumber=String(payment.installmentNumber||0); row.dataset.countedInstallment=String(Boolean(payment.countedInstallment));
+      const label=document.createElement('div'); label.append(text('div',payment.name,'row-label')); const debt=appData.debts.find(d=>d.id===payment.debtId); if(debt){ const quota=debt.totalInstallments>0?(payment.paid&&payment.installmentNumber?`Cuota ${payment.installmentNumber} registrada`:`Próxima cuota ${Math.min(debt.totalInstallments,debt.paidInstallments+1)} de ${debt.totalInstallments}`):(debt.status==='active'?'Deuda activa':'Registro histórico'); label.append(text('div',quota,'row-meta')); }
       const amount=document.createElement('input'); amount.className='input item-amount'; amount.type='number'; amount.min='0'; amount.step='1'; amount.value=payment.amount||''; amount.setAttribute('aria-label',`Pago mensual de ${payment.name}`);
       const paid=document.createElement('label'); paid.className='switch'; const check=document.createElement('input'); check.type='checkbox'; check.checked=Boolean(payment.paid); check.className='item-paid'; check.setAttribute('aria-label',`Marcar ${payment.name} como pagado`); paid.append(check,text('span',''));
       row.append(label,amount,paid); row.addEventListener('input',updateMonthFormSummary); container.append(row);
@@ -569,7 +587,7 @@
   }
 
   function collectMonthDebtPayments(){
-    return qsa('.line-item',qs('#month-debt-items')).map(row=>({id:row.dataset.itemId||uid('pay'),debtId:cleanText(row.dataset.debtId,80),name:cleanText(row.dataset.name,80),amount:Math.max(0,num(qs('.item-amount',row)?.value)),paid:Boolean(qs('.item-paid',row)?.checked)})).filter(x=>x.name&&x.amount>0);
+    return qsa('.line-item',qs('#month-debt-items')).map(row=>({id:row.dataset.itemId||uid('pay'),debtId:cleanText(row.dataset.debtId,80),name:cleanText(row.dataset.name,80),amount:Math.max(0,num(qs('.item-amount',row)?.value)),paid:Boolean(qs('.item-paid',row)?.checked),installmentNumber:Math.max(0,Math.round(num(row.dataset.installmentNumber))),countedInstallment:row.dataset.countedInstallment==='true'})).filter(x=>x.name&&x.amount>0);
   }
 
   function updateMonthFormSummary(){
@@ -589,11 +607,30 @@
     month.incomes.forEach(x=>addLineItem('income',x)); month.expenses.forEach(x=>addLineItem('expense',x)); month.savings.forEach(x=>addLineItem('saving',x)); if(!month.incomes.length)addLineItem('income'); if(!month.expenses.length)addLineItem('expense'); if(!month.savings.length)addLineItem('saving'); renderMonthDebtItems(month.debtPayments,false); updateMonthFormSummary(); showTab('budget'); qs('#month-key').focus();
   }
 
+  function applyInstallmentChange(payment,shouldCount){
+    const debt=appData.debts.find(d=>d.id===payment.debtId); if(!debt||debt.totalInstallments<=0) return;
+    if(shouldCount&&!payment.countedInstallment){
+      debt.paidInstallments=Math.min(debt.totalInstallments,debt.paidInstallments+1); payment.countedInstallment=true; payment.installmentNumber=payment.installmentNumber||debt.paidInstallments;
+      if(debt.balanceEstimated) debt.balance=Math.max(0,debt.balance-debt.minimumPayment);
+    }else if(!shouldCount&&payment.countedInstallment){
+      debt.paidInstallments=Math.max(0,debt.paidInstallments-1); payment.countedInstallment=false;
+      if(debt.balanceEstimated) debt.balance=Math.max(0,(debt.totalInstallments-debt.paidInstallments)*debt.minimumPayment);
+    }
+    if(debt.paidInstallments>=debt.totalInstallments){debt.status='paid';if(debt.balanceEstimated)debt.balance=0;}
+    else if(debt.balance>0||debt.totalInstallments>debt.paidInstallments) debt.status='active';
+    debt.updatedAt=new Date().toISOString();
+  }
+
+  function reconcileMonthInstallments(previousMonth,newMonth){
+    const previousByDebt=new Map(safeArray(previousMonth?.debtPayments).map(p=>[p.debtId,p]));
+    newMonth.debtPayments.forEach(payment=>{const old=previousByDebt.get(payment.debtId);payment.countedInstallment=Boolean(old?.countedInstallment);if(!payment.installmentNumber){const debt=appData.debts.find(d=>d.id===payment.debtId);payment.installmentNumber=debt?.totalInstallments>0?Math.min(debt.totalInstallments,debt.paidInstallments+(payment.paid?1:0)):0;}applyInstallmentChange(payment,payment.paid);});
+  }
+
   function saveMonth(event){
     event.preventDefault(); const key=qs('#month-key').value; if(!isMonthKey(key)){showToast('Selecciona un mes válido.','error');qs('#month-key').focus();return;}
     const incomes=collectLineItems(qs('#income-items'),'income'); if(!incomes.length){showToast('Agrega al menos un ingreso válido.','error');return;}
     const month=normalizeMonth({note:qs('#month-note').value,incomes,expenses:collectLineItems(qs('#expense-items'),'expense'),debtPayments:collectMonthDebtPayments(),savings:collectLineItems(qs('#saving-items'),'saving'),createdAt:appData.months[key]?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()});
-    const commit=()=>{appData.months[key]=month;if(saveData()){refreshMonthSelectors();qs('#home-month').value=key;renderBudget();renderHome();renderAnalysis();showToast(`${monthLabel(key)} guardado correctamente.`);}};
+    const commit=()=>{reconcileMonthInstallments(appData.months[key],month);appData.months[key]=month;if(saveData()){refreshMonthSelectors();qs('#home-month').value=key;renderBudget();renderHome();renderDebts();renderAnalysis();showToast(`${monthLabel(key)} guardado correctamente.`);}};
     if(appData.months[key]) askConfirmation('Reemplazar mes',`${monthLabel(key)} ya existe. Se reemplazará el registro completo con los datos del formulario.`,commit,'Reemplazar'); else commit();
   }
 
@@ -611,13 +648,13 @@
   }
 
   function openDebtDialog(id=''){
-    const debt=appData.debts.find(x=>x.id===id); qs('#debt-form').reset(); qs('#debt-id').value=debt?.id||''; qs('#debt-dialog-title').textContent=debt?'Editar deuda':'Nueva deuda'; qs('#debt-name').value=debt?.name||''; qs('#debt-balance').value=debt?.balance||''; qs('#debt-minimum').value=debt?.minimumPayment||''; qs('#debt-rate').value=debt?.annualRate??''; qs('#debt-day').value=debt?.dueDay||''; qs('#debt-dialog').showModal(); setTimeout(()=>qs('#debt-name').focus(),0);
+    const debt=appData.debts.find(x=>x.id===id); qs('#debt-form').reset(); qs('#debt-id').value=debt?.id||''; qs('#debt-dialog-title').textContent=debt?'Editar deuda':'Nueva deuda'; qs('#debt-name').value=debt?.name||''; qs('#debt-type').value=debt?.type||'other'; qs('#debt-balance').value=debt?.balanceEstimated?'':(debt?.balance||''); qs('#debt-minimum').value=debt?.minimumPayment||''; qs('#debt-paid-installments').value=debt?.paidInstallments||''; qs('#debt-total-installments').value=debt?.totalInstallments||''; qs('#debt-rate').value=debt?.annualRate??''; qs('#debt-day').value=debt?.dueDay||''; qs('#debt-dialog').showModal(); setTimeout(()=>qs('#debt-name').focus(),0);
   }
 
   function saveDebt(event){
-    if(event.submitter?.value==='cancel') return; event.preventDefault(); const id=qs('#debt-id').value; const name=cleanText(qs('#debt-name').value,80); const balance=num(qs('#debt-balance').value); const minimumPayment=num(qs('#debt-minimum').value); const rawRate=qs('#debt-rate').value; const annualRate=rawRate===''?null:num(rawRate); const dueDay=qs('#debt-day').value===''?null:num(qs('#debt-day').value);
-    if(!name||balance<=0||minimumPayment<=0){showToast('Completa nombre, saldo y pago mínimo con valores válidos.','error');return;} if(annualRate!==null&&(annualRate<0||annualRate>200)){showToast('La tasa anual debe estar entre 0% y 200%.','error');return;} if(dueDay!==null&&(dueDay<1||dueDay>31)){showToast('El día de vencimiento debe estar entre 1 y 31.','error');return;}
-    const existing=appData.debts.find(x=>x.id===id); const debt=normalizeDebt({id:id||uid('debt'),name,balance,minimumPayment,annualRate,dueDay,status:'active',createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}); if(existing) Object.assign(existing,debt); else appData.debts.push(debt); if(saveData()){qs('#debt-dialog').close();renderDebts();renderBudget();showToast('Deuda guardada.');}
+    if(event.submitter?.value==='cancel') return; event.preventDefault(); const id=qs('#debt-id').value; const name=cleanText(qs('#debt-name').value,80); const type=qs('#debt-type').value; const rawBalance=qs('#debt-balance').value; const minimumPayment=num(qs('#debt-minimum').value); const paidInstallments=Math.max(0,Math.round(num(qs('#debt-paid-installments').value))); const totalInstallments=Math.max(0,Math.round(num(qs('#debt-total-installments').value))); const rawRate=qs('#debt-rate').value; const annualRate=rawRate===''?null:num(rawRate); const dueDay=qs('#debt-day').value===''?null:num(qs('#debt-day').value);
+    if(!name||minimumPayment<=0){showToast('Completa el nombre y una cuota mensual válida.','error');return;} if(totalInstallments>0&&paidInstallments>totalInstallments){showToast('Las cuotas pagadas no pueden superar las cuotas totales.','error');return;} if(rawBalance===''&&totalInstallments<=0){showToast('Ingresa el saldo actual o completa la cantidad total de cuotas.','error');return;} const balanceEstimated=rawBalance===''; const balance=balanceEstimated?Math.max(0,(totalInstallments-paidInstallments)*minimumPayment):Math.max(0,num(rawBalance)); if(balance<=0&&!(totalInstallments>0&&paidInstallments>=totalInstallments)){showToast('El saldo debe ser mayor que cero mientras existan cuotas pendientes.','error');return;} if(annualRate!==null&&(annualRate<0||annualRate>200)){showToast('La tasa anual debe estar entre 0% y 200%.','error');return;} if(dueDay!==null&&(dueDay<1||dueDay>31)){showToast('El día de vencimiento debe estar entre 1 y 31.','error');return;}
+    const existing=appData.debts.find(x=>x.id===id); const debt=normalizeDebt({id:id||uid('debt'),name,type,balance,balanceEstimated,minimumPayment,paidInstallments,totalInstallments,annualRate,dueDay,status:'active',createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}); if(existing) Object.assign(existing,debt); else appData.debts.push(debt); if(saveData()){qs('#debt-dialog').close();renderDebts();renderBudget();showToast('Deuda guardada.');}
   }
 
   function simulateDebts(strategy='normal',extraPayment=0){
@@ -642,7 +679,7 @@
 
   function renderDebts(){
     const active=getActiveDebts(); const empty=qs('#debts-empty'); const content=qs('#debts-content'); clearElement(empty);
-    if(!appData.debts.length){content.hidden=true;empty.append(emptyState('💳','No hay deudas registradas','Agrega saldo actual, pago mínimo y tasa para obtener proyecciones confiables.'));return;}
+    if(!appData.debts.length){content.hidden=true;empty.append(emptyState('💳','No hay deudas registradas','Agrega una cuota mensual y, cuando los conozcas, saldo, cuotas o tasa para mejorar las proyecciones.'));return;}
     content.hidden=false;
     const metrics=qs('#debt-metrics');clearElement(metrics);
     if(!active.length){
@@ -650,16 +687,16 @@
       const cards=qs('#strategy-cards');clearElement(cards);cards.append(emptyState('🎉','Sin deudas activas','No necesitas una estrategia de pago mientras todos los saldos permanezcan en cero.'));
       qs('#rate-warning').hidden=true;const order=qs('#payoff-order');clearElement(order);order.append(text('div','Tus deudas activas aparecerán aquí.','form-hint'));destroyChart('debt');const canvas=qs('#debt-chart');replaceCanvasFallback(canvas,'Sin saldo activo para proyectar.');renderDebtList();return;
     }
-    const totalBalance=active.reduce((s,d)=>s+d.balance,0); const minTotal=active.reduce((s,d)=>s+d.minimumPayment,0); const knownRates=active.filter(d=>d.annualRate!==null); const weightedRate=knownRates.length?knownRates.reduce((s,d)=>s+d.annualRate*d.balance,0)/knownRates.reduce((s,d)=>s+d.balance,0):null; const normal=simulateDebts('normal',0);
-    metrics.append(metric('Saldo activo',fmt(totalBalance),'red'),metric('Pagos mínimos',fmt(minTotal),'blue','por mes'),metric('Tasa ponderada',weightedRate===null?'Sin datos':`${weightedRate.toFixed(2)}%`,weightedRate===null?'amber':'purple'),metric('Pago normal',normal.months?`${normal.months} meses`:'Revisar','green'));
-    qs('#rate-warning').hidden=active.every(d=>d.annualRate!==null); qs('#rate-warning').textContent='Hay deudas sin tasa informada. Para esas deudas, las proyecciones normal y bola de nieve suponen 0% de interés y pueden ser optimistas; la avalancha permanecerá deshabilitada hasta completar todas las tasas.'; renderStrategies(); renderDebtList();
+    const totalBalance=active.reduce((s,d)=>s+d.balance,0); const minTotal=active.reduce((s,d)=>s+d.minimumPayment,0); const knownInstallments=active.filter(d=>d.totalInstallments>0); const paidInstallments=knownInstallments.reduce((s,d)=>s+d.paidInstallments,0); const pendingInstallments=knownInstallments.reduce((s,d)=>s+Math.max(0,d.totalInstallments-d.paidInstallments),0); const normal=simulateDebts('normal',0);
+    metrics.append(metric('Saldo activo',fmt(totalBalance),'red'),metric('Pago mensual',fmt(minTotal),'blue','cuotas y mínimos'),metric('Cuotas pendientes',knownInstallments.length?String(pendingInstallments):'Sin datos',knownInstallments.length?'amber':'purple',knownInstallments.length?`${paidInstallments} pagadas registradas`:'seguimiento opcional'),metric('Pago normal',normal.months?`${normal.months} meses`:'Revisar','green'));
+    qs('#rate-warning').hidden=active.every(d=>d.annualRate!==null); qs('#rate-warning').textContent='Hay deudas sin tasa informada. Esto es válido para préstamos informales o sin interés. Pago normal y bola de nieve asumirán 0% en esas deudas; la avalancha quedará deshabilitada porque no puede comparar costos financieros sin tasas.'; renderStrategies(); renderDebtList();
   }
 
   function renderStrategies(){
     const extra=Math.max(0,num(qs('#extra-payment').value)); const results={normal:simulateDebts('normal',0),snowball:simulateDebts('snowball',extra),avalanche:simulateDebts('avalanche',extra)}; const available=Object.entries(results).filter(([,r])=>r.available&&r.months); const bestMonths=available.length?Math.min(...available.map(([,r])=>r.months)):null;
     const container=qs('#strategy-cards');clearElement(container); const labels={normal:'📅 Pago normal',snowball:'❄️ Bola de nieve',avalanche:'🏔️ Avalancha'};
     Object.entries(results).forEach(([key,result])=>{const card=document.createElement('button');card.type='button';card.className=`strategy-card${result.months===bestMonths&&key!=='normal'?' best':''}`;card.dataset.strategy=key;card.style.textAlign='left';card.style.cursor=result.available?'pointer':'not-allowed';card.disabled=!result.available;if(result.months===bestMonths&&key!=='normal')card.append(text('span','Más rápido','strategy-badge'));card.append(text('div',labels[key],'strategy-name'));
-      if(!result.available){card.append(text('div','No disponible','strategy-big'),text('div','Completa todas las tasas','strategy-warning'));}
+      if(!result.available){card.append(text('div','No disponible','strategy-big'),text('div','Faltan tasas opcionales','strategy-warning'));}
       else if(result.stalled||!result.months){card.append(text('div','No amortiza','strategy-big red'),text('div','El pago no reduce suficientemente el saldo. Revisa tasa y mínimo.','strategy-warning'));}
       else{card.append(text('div',`${result.months} meses`,'strategy-big'),text('div',`Interés estimado: ${fmt(result.totalInterest)}`,'strategy-detail'));if(key!=='normal'&&extra>0)card.append(text('div',`Incluye ${fmt(extra)} extra al mes.`,'strategy-detail'));}
       if(activeStrategy===key) card.style.boxShadow='0 0 0 2px var(--blue)'; container.append(card);
@@ -668,7 +705,7 @@
   }
 
   function renderPayoffOrder(result){
-    const container=qs('#payoff-order');clearElement(container); if(!result.available){container.append(text('div','Completa las tasas para usar avalancha.','form-hint'));return;} if(result.stalled||!result.months){container.append(emptyState('⚠️','La deuda no se amortiza','Los pagos mínimos no alcanzan para reducir el saldo bajo los supuestos actuales.'));return;} if(!result.payoffOrder.length){container.append(text('div','Sin orden disponible.','form-hint'));return;}
+    const container=qs('#payoff-order');clearElement(container); if(!result.available){container.append(text('div','La avalancha necesita tasas conocidas; usa pago normal o bola de nieve cuando no estén disponibles.','form-hint'));return;} if(result.stalled||!result.months){container.append(emptyState('⚠️','La deuda no se amortiza','Los pagos mínimos no alcanzan para reducir el saldo bajo los supuestos actuales.'));return;} if(!result.payoffOrder.length){container.append(text('div','Sin orden disponible.','form-hint'));return;}
     const base=currentMonthOrLatest(); result.payoffOrder.forEach((item,index)=>{const row=document.createElement('div');row.className='payoff-step';row.append(text('div',String(index+1),'step-num'));const info=document.createElement('div');info.append(text('div',item.name,'step-name'),text('div',`Se libera su pago mínimo de ${fmt(item.payment)} al terminar.`,'step-meta'));row.append(info,text('div',monthLabel(addMonths(base,item.month)),'step-date'));container.append(row);});
   }
 
@@ -677,7 +714,14 @@
   }
 
   function renderDebtList(){
-    const list=qs('#debt-list');clearElement(list); const sorted=[...appData.debts].sort((a,b)=>(a.status===b.status?b.balance-a.balance:a.status==='active'?-1:1)); sorted.forEach(debt=>{const card=document.createElement('div');card.className='debt-card';const head=document.createElement('div');head.className='entity-head';const left=document.createElement('div');left.append(text('div',debt.name,'entity-title'));const meta=[];meta.push(debt.annualRate===null?'tasa no informada':`${debt.annualRate.toFixed(2)}% anual`);if(debt.dueDay)meta.push(`vence día ${debt.dueDay}`);left.append(text('div',meta.join(' · '),'entity-meta'));const value=document.createElement('div');value.className='entity-value';value.append(text('div',fmt(debt.balance),debt.status==='active'?'red':'green'),text('div',debt.status==='active'?`mínimo ${fmt(debt.minimumPayment)}/mes`:'pagada','entity-subvalue'));head.append(left,value);const foot=document.createElement('div');foot.className='entity-foot';foot.append(debt.status==='active'?badge('Activa','badge-blue'):badge('Pagada','badge-green'));const actions=document.createElement('div');actions.className='entity-actions';actions.append(button('Editar',{action:'edit-debt',id:debt.id}));if(debt.status==='active')actions.append(button('Marcar pagada',{action:'pay-debt',id:debt.id}));actions.append(button('Eliminar',{className:'btn btn-sm btn-danger',action:'delete-debt',id:debt.id}));foot.append(actions);card.append(head,foot);list.append(card);});
+    const typeLabels={bank:'Crédito bancario',card:'Tarjeta o línea',family:'Préstamo familiar',thirdParty:'Crédito de tercero',other:'Otro compromiso'};
+    const list=qs('#debt-list');clearElement(list); const sorted=[...appData.debts].sort((a,b)=>(a.status===b.status?b.balance-a.balance:a.status==='active'?-1:1)); sorted.forEach(debt=>{
+      const card=document.createElement('div');card.className='debt-card';const head=document.createElement('div');head.className='entity-head';const left=document.createElement('div');left.append(text('div',debt.name,'entity-title'));
+      const meta=[typeLabels[debt.type]||typeLabels.other,debt.annualRate===null?'tasa opcional no informada':`${debt.annualRate.toFixed(2)}% anual`];if(debt.dueDay)meta.push(`vence día ${debt.dueDay}`);left.append(text('div',meta.join(' · '),'entity-meta'));
+      const value=document.createElement('div');value.className='entity-value';value.append(text('div',fmt(debt.balance),debt.status==='active'?'red':'green'),text('div',debt.status==='active'?`${debt.balanceEstimated?'saldo estimado · ':''}${fmt(debt.minimumPayment)}/mes`:'pagada','entity-subvalue'));head.append(left,value);card.append(head);
+      if(debt.totalInstallments>0){const progress=clamp(debt.paidInstallments/debt.totalInstallments*100,0,100);const copy=document.createElement('div');copy.className='entity-meta';copy.style.margin='10px 0 6px';copy.textContent=`${debt.paidInstallments} de ${debt.totalInstallments} cuotas pagadas · ${Math.max(0,debt.totalInstallments-debt.paidInstallments)} pendientes`;const bar=document.createElement('div');bar.className='progress';const fill=document.createElement('span');fill.style.width=`${progress}%`;fill.style.background=progress>=100?'var(--green)':'var(--blue)';bar.append(fill);card.append(copy,bar);}
+      const foot=document.createElement('div');foot.className='entity-foot';foot.append(debt.status==='active'?badge('Activa','badge-blue'):badge('Pagada','badge-green'));const actions=document.createElement('div');actions.className='entity-actions';actions.append(button('Editar',{action:'edit-debt',id:debt.id}));if(debt.status==='active')actions.append(button('Marcar pagada',{action:'pay-debt',id:debt.id}));actions.append(button('Eliminar',{className:'btn btn-sm btn-danger',action:'delete-debt',id:debt.id}));foot.append(actions);card.append(foot);list.append(card);
+    });
   }
 
   function openGoalDialog(id=''){
@@ -779,7 +823,7 @@
       if(action==='edit-month')loadMonthForm(id);
       if(action==='delete-month')askConfirmation('Eliminar mes',`Se eliminará ${monthLabel(id)}. Esta acción no se puede deshacer.`,()=>{delete appData.months[id];if(saveData()){refreshMonthSelectors();renderAll();showToast('Mes eliminado.');}},'Eliminar');
       if(action==='edit-debt')openDebtDialog(id);
-      if(action==='pay-debt')askConfirmation('Marcar deuda como pagada','El saldo se establecerá en cero y la deuda dejará de aparecer en nuevos meses. Los meses históricos no cambiarán.',()=>{const debt=appData.debts.find(d=>d.id===id);if(debt){debt.balance=0;debt.status='paid';debt.updatedAt=new Date().toISOString();if(saveData()){renderDebts();renderBudget();showToast('Deuda marcada como pagada.');}}},'Marcar pagada');
+      if(action==='pay-debt')askConfirmation('Marcar deuda como pagada','El saldo se establecerá en cero y, cuando exista un total de cuotas, todas quedarán registradas como pagadas. Los meses históricos no cambiarán.',()=>{const debt=appData.debts.find(d=>d.id===id);if(debt){debt.balance=0;debt.status='paid';if(debt.totalInstallments>0)debt.paidInstallments=debt.totalInstallments;debt.updatedAt=new Date().toISOString();if(saveData()){renderDebts();renderBudget();showToast('Deuda marcada como pagada.');}}},'Marcar pagada');
       if(action==='delete-debt')askConfirmation('Eliminar deuda','La deuda se eliminará del catálogo. Los pagos guardados en meses anteriores conservarán su nombre y monto.',()=>{appData.debts=appData.debts.filter(d=>d.id!==id);if(saveData()){renderDebts();renderBudget();showToast('Deuda eliminada.');}},'Eliminar');
       if(action==='edit-goal')openGoalDialog(id);if(action==='contribute-goal')openContributionDialog(id);
       if(action==='delete-goal')askConfirmation('Eliminar objetivo','Se eliminarán también sus movimientos de abono. Esta acción no se puede deshacer.',()=>{appData.goals=appData.goals.filter(g=>g.id!==id);if(saveData()){renderGoals();renderAnalysis();showToast('Objetivo eliminado.');}},'Eliminar');
