@@ -170,7 +170,7 @@
         </div>
 
         <div class="section-block">
-          <div class="section-block-head"><div><h3>Gastos</h3><p>Separa necesidades esenciales de gastos discrecionales.</p></div></div>
+          <div class="section-block-head"><div><h3>Gastos</h3><p>Usa Fijo para gastos recurrentes y Extra para gastos puntuales que no necesariamente se repetirán el próximo mes.</p></div></div>
           <div class="line-items" id="expense-items"></div>
           <button class="add-line" type="button" data-add-line="expense">+ Agregar gasto</button>
         </div>
@@ -247,8 +247,8 @@
           <div class="card"><h2 class="card-title">Tendencia mensual</h2><div class="chart-box"><canvas id="trend-chart" aria-label="Tendencia mensual" role="img"></canvas></div></div>
           <div class="card"><h2 class="card-title">Escenarios próximos 6 meses</h2><div class="chart-box"><canvas id="projection-chart" aria-label="Escenarios de proyección" role="img"></canvas></div></div>
         </div>
-        <div class="card"><h2 class="card-title">Comparativa histórica</h2><div class="table-wrap"><table class="table"><thead><tr><th>Mes</th><th>Ingreso</th><th>Necesidades</th><th>Discrecional</th><th>Ahorro</th><th>Deuda</th><th>Disponible</th></tr></thead><tbody id="history-table"></tbody></table></div></div>
-        <div class="notice">La referencia 50/30/20 es una guía flexible. Las necesidades, prioridades y capacidad de ahorro varían según cada hogar.</div>
+        <div class="card"><h2 class="card-title">Comparativa histórica</h2><div class="table-wrap"><table class="table"><thead><tr><th>Mes</th><th>Ingreso</th><th>Fijos</th><th>Extras</th><th>Ahorro</th><th>Deuda</th><th>Disponible</th></tr></thead><tbody id="history-table"></tbody></table></div></div>
+        <div class="notice">Fijo y Extra describen la recurrencia del gasto, no su importancia. Un gasto extra puede ser necesario, pero no se copia al mes siguiente ni se incluye automáticamente en el escenario base.</div>
       </div>
     </section>
   </main>
@@ -315,7 +315,7 @@
 
   const STORAGE_KEY = 'mis-finanzas-v2';
   const LEGACY_KEY = 'mis-finanzas-v1';
-  const SCHEMA_VERSION = 2;
+  const SCHEMA_VERSION = 3;
   const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
   const MONTH_FORMAT = new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const CATEGORY_LABELS = { emergency:'Fondo de emergencia', saving:'Ahorro', investment:'Inversión', purchase:'Compra', travel:'Viaje', education:'Educación', other:'Otro' };
@@ -349,7 +349,7 @@
     return {
       note:cleanText(raw.note,140),
       incomes:safeArray(raw.incomes).map(x=>({id:cleanText(x.id,80)||uid('inc'),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount))})).filter(x=>x.name&&x.amount>0),
-      expenses:safeArray(raw.expenses).map(x=>({id:cleanText(x.id,80)||uid('exp'),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount)),kind:x.kind==='discretionary'?'discretionary':'essential'})).filter(x=>x.name&&x.amount>0),
+      expenses:safeArray(raw.expenses).map(x=>({id:cleanText(x.id,80)||uid('exp'),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount)),kind:(x.kind==='extra'||x.kind==='discretionary')?'extra':'fixed'})).filter(x=>x.name&&x.amount>0),
       debtPayments:safeArray(raw.debtPayments).map(x=>({id:cleanText(x.id,80)||uid('pay'),debtId:cleanText(x.debtId,80),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount)),paid:Boolean(x.paid),installmentNumber:Math.max(0,Math.round(num(x.installmentNumber))),countedInstallment:Boolean(x.countedInstallment)})).filter(x=>x.name&&x.amount>0),
       savings:safeArray(raw.savings).map(x=>({id:cleanText(x.id,80)||uid('sav'),name:cleanText(x.name,80),amount:Math.max(0,num(x.amount))})).filter(x=>x.name&&x.amount>0),
       createdAt:cleanText(raw.createdAt,40)||new Date().toISOString(),
@@ -405,7 +405,7 @@
     const entries=Object.entries(raw?.meses||{}).map(([label,value])=>({key:parseLegacyMonthKey(label),value})).filter(x=>x.key).sort((a,b)=>a.key.localeCompare(b.key));
     for(const {key,value} of entries){
       const incomes=(Array.isArray(value.ingresos)?value.ingresos:[{nombre:'Ingreso',monto:num(value.ingreso)}]).map(x=>({id:uid('inc'),name:cleanText(x.nombre,80),amount:Math.max(0,num(x.monto))})).filter(x=>x.name&&x.amount>0);
-      const expenses=safeArray(value.gastos).map(x=>({id:uid('exp'),name:cleanText(x.nombre,80),amount:Math.max(0,num(x.monto)),kind:x.tipo==='extra'?'discretionary':'essential'})).filter(x=>x.name&&x.amount>0);
+      const expenses=safeArray(value.gastos).map(x=>({id:uid('exp'),name:cleanText(x.nombre,80),amount:Math.max(0,num(x.monto)),kind:x.tipo==='extra'?'extra':'fixed'})).filter(x=>x.name&&x.amount>0);
       const savings=safeArray(value.reservas).map(x=>({id:uid('sav'),name:cleanText(x.nombre,80),amount:Math.max(0,num(x.monto))})).filter(x=>x.name&&x.amount>0);
       const debtPayments=[];
       for(const legacyDebt of safeArray(value.creditos)){
@@ -437,7 +437,7 @@
   function loadData(){
     try{
       const current=localStorage.getItem(STORAGE_KEY);
-      if(current){const data=normalizeData(JSON.parse(current));const legacy=localStorage.getItem(LEGACY_KEY);if(legacy&&restoreLegacyInstallments(data,JSON.parse(legacy)))localStorage.setItem(STORAGE_KEY,JSON.stringify(data));return data;}
+      if(current){const parsed=JSON.parse(current);const data=normalizeData(parsed);const legacy=localStorage.getItem(LEGACY_KEY);const restored=legacy&&restoreLegacyInstallments(data,JSON.parse(legacy));if(parsed.schemaVersion!==SCHEMA_VERSION||restored)localStorage.setItem(STORAGE_KEY,JSON.stringify(data));return data;}
       const legacy=localStorage.getItem(LEGACY_KEY);
       if(legacy){ const migrated=migrateLegacy(JSON.parse(legacy)); localStorage.setItem(STORAGE_KEY,JSON.stringify(migrated)); return migrated; }
     }catch(error){ console.error('No fue posible cargar los datos:',error); }
@@ -461,13 +461,13 @@
 
   function calculateMonth(month){
     const income=safeArray(month?.incomes).reduce((s,x)=>s+num(x.amount),0);
-    const essential=safeArray(month?.expenses).filter(x=>x.kind==='essential').reduce((s,x)=>s+num(x.amount),0);
-    const discretionary=safeArray(month?.expenses).filter(x=>x.kind==='discretionary').reduce((s,x)=>s+num(x.amount),0);
+    const fixed=safeArray(month?.expenses).filter(x=>x.kind==='fixed').reduce((s,x)=>s+num(x.amount),0);
+    const extra=safeArray(month?.expenses).filter(x=>x.kind==='extra').reduce((s,x)=>s+num(x.amount),0);
     const debt=safeArray(month?.debtPayments).reduce((s,x)=>s+num(x.amount),0);
     const savings=safeArray(month?.savings).reduce((s,x)=>s+num(x.amount),0);
-    const committed=essential+discretionary+debt+savings;
+    const committed=fixed+extra+debt+savings;
     const available=income-committed;
-    return {income,essential,discretionary,debt,savings,committed,available,commitmentRate:income>0?committed/income*100:0,essentialRate:income>0?essential/income*100:0,needsRate:income>0?(essential+debt)/income*100:0,wantsRate:income>0?discretionary/income*100:0,savingsRate:income>0?savings/income*100:0,debtRate:income>0?debt/income*100:0,availableRate:income>0?available/income*100:0};
+    return {income,fixed,extra,debt,savings,committed,available,commitmentRate:income>0?committed/income*100:0,fixedRate:income>0?fixed/income*100:0,recurringRate:income>0?(fixed+debt)/income*100:0,extraRate:income>0?extra/income*100:0,savingsRate:income>0?savings/income*100:0,debtRate:income>0?debt/income*100:0,availableRate:income>0?available/income*100:0};
   }
 
   function clearElement(node){ while(node.firstChild) node.removeChild(node.firstChild); }
@@ -518,8 +518,8 @@
 
   function financialState(t){
     if(t.income<=0) return {kind:'bad',icon:'🔴',label:'Sin ingreso',title:'No hay ingresos válidos para calcular el mes.',copy:'Edita este registro y agrega al menos un ingreso líquido.'};
-    if(t.available<0) return {kind:'bad',icon:'🔴',label:'Déficit',title:`Tus asignaciones superan el ingreso en ${fmt(Math.abs(t.available))}.`,copy:'Prioriza gastos esenciales, revisa pagos de deuda y pausa gastos discrecionales que puedan esperar.'};
-    if(t.availableRate<5) return {kind:'warn',icon:'🟡',label:'Muy ajustado',title:`Queda disponible ${fmt(t.available)}, equivalente al ${pct(t.availableRate)} del ingreso.`,copy:'Un imprevisto pequeño podría generar déficit. Revisa especialmente los gastos discrecionales.'};
+    if(t.available<0) return {kind:'bad',icon:'🔴',label:'Déficit',title:`Tus asignaciones superan el ingreso en ${fmt(Math.abs(t.available))}.`,copy:'Revisa los gastos fijos, los pagos de deuda y los gastos extra que puedan esperar.'};
+    if(t.availableRate<5) return {kind:'warn',icon:'🟡',label:'Muy ajustado',title:`Queda disponible ${fmt(t.available)}, equivalente al ${pct(t.availableRate)} del ingreso.`,copy:'Un imprevisto pequeño podría generar déficit. Revisa especialmente los gastos extra de este mes.'};
     if(t.availableRate<15) return {kind:'warn',icon:'🟡',label:'Ajustado',title:`El mes cierra con ${fmt(t.available)} disponibles.`,copy:`Tienes comprometido el ${pct(t.commitmentRate)} del ingreso; mantén un margen para variaciones e imprevistos.`};
     return {kind:'good',icon:'🟢',label:'Con margen',title:`El mes cierra con ${fmt(t.available)} disponibles.`,copy:`El ${pct(t.commitmentRate)} del ingreso está asignado entre gastos, deuda y ahorro.`};
   }
@@ -531,9 +531,9 @@
     const metrics=qs('#home-metrics'); clearElement(metrics); metrics.append(metric('Ingreso',fmt(t.income),'green'),metric('Asignado',fmt(t.committed),'red'),metric('Disponible',fmt(t.available),t.available>=0?'green':'red'),metric('% comprometido',pct(t.commitmentRate),t.commitmentRate>95?'red':t.commitmentRate>85?'amber':'green'));
     const state=financialState(t); const stateWrap=qs('#financial-state'); clearElement(stateWrap); const banner=document.createElement('div'); banner.className=`banner ${state.kind}`; banner.append(text('div',state.icon,'banner-icon')); const body=document.createElement('div'); body.className='banner-body'; body.append(text('span',state.label,'banner-label'),text('div',state.title,'banner-title'),text('div',state.copy,'banner-copy')); banner.append(body); stateWrap.append(banner);
     renderSimpleList(qs('#home-incomes'),month.incomes,'Sin ingresos registrados',x=>rowItem(x.name,fmt(x.amount),{color:'green'}));
-    const distribution=qs('#home-distribution'); clearElement(distribution); distribution.append(rowItem('Necesidades',fmt(t.essential),{color:'red'}));
-    distribution.append(rowItem('Gastos discrecionales',fmt(t.discretionary),{color:'amber'}),rowItem('Pagos de deuda',fmt(t.debt),{color:'blue'}),rowItem('Ahorro planificado',fmt(t.savings),{color:'purple'}),rowItem('Disponible',fmt(t.available),{color:t.available>=0?'green':'red'}));
-    renderSimpleList(qs('#home-expenses'),month.expenses,'Sin gastos registrados',x=>rowItem(x.name,fmt(x.amount),{color:x.kind==='essential'?'red':'amber',badges:[badge(x.kind==='essential'?'esencial':'discrecional',x.kind==='essential'?'badge-red':'badge-amber')]}));
+    const distribution=qs('#home-distribution'); clearElement(distribution); distribution.append(rowItem('Gastos fijos',fmt(t.fixed),{color:'red'}));
+    distribution.append(rowItem('Gastos extra',fmt(t.extra),{color:'amber'}),rowItem('Pagos de deuda',fmt(t.debt),{color:'blue'}),rowItem('Ahorro planificado',fmt(t.savings),{color:'purple'}),rowItem('Disponible',fmt(t.available),{color:t.available>=0?'green':'red'}));
+    renderSimpleList(qs('#home-expenses'),month.expenses,'Sin gastos registrados',x=>rowItem(x.name,fmt(x.amount),{color:x.kind==='fixed'?'red':'amber',badges:[badge(x.kind==='fixed'?'fijo':'extra',x.kind==='fixed'?'badge-red':'badge-amber')]}));
     const debtWrap=qs('#home-debt-payments'); clearElement(debtWrap); if(!month.debtPayments.length) debtWrap.append(emptyState('✅','Sin pagos de deuda','Este mes no tiene pagos de deuda registrados.')); else month.debtPayments.forEach(payment=>{ const sw=document.createElement('label'); sw.className='switch'; const input=document.createElement('input'); input.type='checkbox'; input.checked=payment.paid; input.setAttribute('aria-label',`Marcar ${payment.name} como pagado`); input.addEventListener('change',()=>{payment.paid=input.checked;applyInstallmentChange(payment,input.checked);month.updatedAt=new Date().toISOString();if(saveData()){renderHome();renderBudget();renderDebts();}}); sw.append(input,text('span','')); debtWrap.append(rowItem(payment.name,fmt(payment.amount),{color:payment.paid?'green':'blue',paid:payment.paid,badges:[badge(payment.paid?'pagado':'pendiente',payment.paid?'badge-green':'badge-blue')],after:sw})); });
     renderSimpleList(qs('#home-savings'),month.savings,'Sin ahorro planificado',x=>rowItem(x.name,fmt(x.amount),{color:'purple'}));
     renderHomeChart(t);
@@ -548,7 +548,7 @@
 
   function renderHomeChart(t){
     destroyChart('home'); const canvas=qs('#home-chart'); canvas.hidden=false; const fb=canvas.parentElement.querySelector('.chart-fallback'); if(fb) fb.remove(); if(!chartAvailable()){replaceCanvasFallback(canvas,'El resumen está disponible, pero el gráfico no pudo cargar.');return;}
-    const colors=chartColors(); charts.home=new Chart(canvas,{type:'bar',data:{labels:['Ingreso','Necesidades','Discrecional','Deuda','Ahorro','Disponible'],datasets:[{data:[t.income,t.essential,t.discretionary,t.debt,t.savings,Math.max(0,t.available)],backgroundColor:['#35680f','#a32d2d','#86520d','#185fa5','#6a3aa0','#2f7a62'],borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.parsed.y)}}},scales:{y:{beginAtZero:true,ticks:{color:colors.text,callback:v=>fmt(v)},grid:{color:colors.grid}},x:{ticks:{color:colors.text},grid:{display:false}}}}});
+    const colors=chartColors(); charts.home=new Chart(canvas,{type:'bar',data:{labels:['Ingreso','Fijos','Extras','Deuda','Ahorro','Disponible'],datasets:[{data:[t.income,t.fixed,t.extra,t.debt,t.savings,Math.max(0,t.available)],backgroundColor:['#35680f','#a32d2d','#86520d','#185fa5','#6a3aa0','#2f7a62'],borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.parsed.y)}}},scales:{y:{beginAtZero:true,ticks:{color:colors.text,callback:v=>fmt(v)},grid:{color:colors.grid}},x:{ticks:{color:colors.text},grid:{display:false}}}}});
   }
 
   function addLineItem(type,data={}){
@@ -560,7 +560,7 @@
     }else if(type==='expense'){
       const name=document.createElement('input'); name.className='input item-name'; name.placeholder='Nombre del gasto'; name.maxLength=80; name.value=data.name||'';
       const amount=document.createElement('input'); amount.className='input item-amount'; amount.type='number'; amount.min='0'; amount.step='1'; amount.placeholder='Monto'; amount.value=data.amount||'';
-      const kind=document.createElement('select'); kind.className='input item-kind'; [['essential','Esencial'],['discretionary','Discrecional']].forEach(([value,label])=>{const option=document.createElement('option');option.value=value;option.textContent=label;kind.append(option);}); kind.value=data.kind||'essential';
+      const kind=document.createElement('select'); kind.className='input item-kind'; [['fixed','Fijo'],['extra','Extra']].forEach(([value,label])=>{const option=document.createElement('option');option.value=value;option.textContent=label;kind.append(option);}); kind.value=(data.kind==='extra'||data.kind==='discretionary')?'extra':'fixed';
       row.append(name,amount,kind,iconRemoveButton()); qs('#expense-items').append(row);
     }
     row.addEventListener('input',updateMonthFormSummary);
@@ -583,7 +583,7 @@
   }
 
   function collectLineItems(container,type){
-    return qsa('.line-item',container).map(row=>{ const name=cleanText(qs('.item-name',row)?.value,80); const amount=Math.max(0,num(qs('.item-amount',row)?.value)); if(type==='expense') return {id:row.dataset.itemId||uid('exp'),name,amount,kind:qs('.item-kind',row)?.value==='discretionary'?'discretionary':'essential'}; return {id:row.dataset.itemId||uid(type),name,amount}; }).filter(x=>x.name&&x.amount>0);
+    return qsa('.line-item',container).map(row=>{ const name=cleanText(qs('.item-name',row)?.value,80); const amount=Math.max(0,num(qs('.item-amount',row)?.value)); if(type==='expense') return {id:row.dataset.itemId||uid('exp'),name,amount,kind:qs('.item-kind',row)?.value==='extra'?'extra':'fixed'}; return {id:row.dataset.itemId||uid(type),name,amount}; }).filter(x=>x.name&&x.amount>0);
   }
 
   function collectMonthDebtPayments(){
@@ -597,7 +597,18 @@
   function resetMonthForm({key=todayMonth(),copyLatest=false}={}){
     qs('#month-form').reset(); qs('#month-key').value=key; qs('#month-note').value=''; ['#income-items','#expense-items','#saving-items'].forEach(id=>clearElement(qs(id)));
     const latest=copyLatest?getMonth(getMonthKeys().at(-1)):null;
-    if(latest){ latest.incomes.forEach(x=>addLineItem('income',{name:x.name,amount:x.amount})); latest.expenses.forEach(x=>addLineItem('expense',{name:x.name,amount:x.amount,kind:x.kind})); latest.savings.forEach(x=>addLineItem('saving',{name:x.name,amount:x.amount})); renderMonthDebtItems(); }
+    if(latest){
+      latest.incomes.forEach(x=>addLineItem('income',{name:x.name,amount:x.amount}));
+      const fixedExpenses=latest.expenses.filter(x=>x.kind==='fixed');
+      const omittedExtras=latest.expenses.filter(x=>x.kind==='extra').length;
+      fixedExpenses.forEach(x=>addLineItem('expense',{name:x.name,amount:x.amount,kind:'fixed'}));
+      if(!fixedExpenses.length)addLineItem('expense');
+      latest.savings.forEach(x=>addLineItem('saving',{name:x.name,amount:x.amount}));
+      if(!latest.savings.length)addLineItem('saving');
+      renderMonthDebtItems();
+      const copied=fixedExpenses.length;
+      setTimeout(()=>showToast(`Se copiaron ${copied} gasto${copied===1?'':'s'} fijo${copied===1?'':'s'}. ${omittedExtras} gasto${omittedExtras===1?'':'s'} extra no se copiaron.`),0);
+    }
     else{ addLineItem('income',{name:'Sueldo líquido'}); addLineItem('expense'); addLineItem('saving'); renderMonthDebtItems(); }
     updateMonthFormSummary();
   }
@@ -748,27 +759,36 @@
   function healthEvaluation(t){
     if(t.income<=0)return{score:0,label:'Sin datos',color:'red',rules:[]};
     let score=100;
-    const essentialPenalty=t.essentialRate>50?Math.min(20,t.essentialRate-50):0;
+    const fixedPenalty=t.fixedRate>50?Math.min(20,t.fixedRate-50):0;
+    const recurringPenalty=t.recurringRate>70?Math.min(15,(t.recurringRate-70)*0.75):0;
     const debtPenalty=t.debtRate>20?Math.min(25,(t.debtRate-20)*1.25):0;
-    const wantsPenalty=t.wantsRate>30?Math.min(15,t.wantsRate-30):0;
     const savingsPenalty=t.savingsRate<10?Math.min(15,(10-t.savingsRate)*1.5):0;
     const deficitPenalty=t.available<0?25:t.availableRate<5?15:t.availableRate<10?8:0;
-    score=Math.max(0,Math.round(score-essentialPenalty-debtPenalty-wantsPenalty-savingsPenalty-deficitPenalty));
+    score=Math.max(0,Math.round(score-fixedPenalty-recurringPenalty-debtPenalty-savingsPenalty-deficitPenalty));
     return{score,label:score>=75?'Sólido':score>=50?'Intermedio':'Frágil',color:score>=75?'green':score>=50?'amber':'red',rules:[
-      {title:'Gastos esenciales',copy:'Referencia flexible: hasta 50% del ingreso',value:pct(t.essentialRate),ok:t.essentialRate<=50,warn:t.essentialRate<=65},
+      {title:'Gastos fijos',copy:'Referencia orientativa: procura que dejen espacio para deuda, ahorro e imprevistos',value:pct(t.fixedRate),ok:t.fixedRate<=50,warn:t.fixedRate<=65},
       {title:'Carga mensual de deuda',copy:'Referencia orientativa: hasta 20% del ingreso',value:pct(t.debtRate),ok:t.debtRate<=20,warn:t.debtRate<=30},
-      {title:'Gastos discrecionales',copy:'Referencia flexible: hasta 30% del ingreso',value:pct(t.wantsRate),ok:t.wantsRate<=30,warn:t.wantsRate<=40},
+      {title:'Compromisos recurrentes',copy:'Gastos fijos más pagos de deuda',value:pct(t.recurringRate),ok:t.recurringRate<=70,warn:t.recurringRate<=85},
       {title:'Ahorro planificado',copy:'Meta inicial sugerida: 10% o más',value:pct(t.savingsRate),ok:t.savingsRate>=10,warn:t.savingsRate>=5},
       {title:'Margen disponible',copy:'Debe permanecer positivo después de todas las asignaciones',value:fmt(t.available),ok:t.availableRate>=10,warn:t.available>=0}
     ]};
   }
 
   function generateInsights(key,month,t){
-    const insights=[];if(t.available<0)insights.push({kind:'bad',icon:'⚠️',label:'Déficit mensual',copy:`Faltan ${fmt(Math.abs(t.available))} para cubrir todas las asignaciones.`});else insights.push({kind:t.availableRate>=15?'good':'warn',icon:'💵',label:'Dinero disponible',copy:`Quedan ${fmt(t.available)}, equivalente al ${pct(t.availableRate)} del ingreso.`});
+    const insights=[];
+    if(t.available<0)insights.push({kind:'bad',icon:'⚠️',label:'Déficit mensual',copy:`Faltan ${fmt(Math.abs(t.available))} para cubrir todas las asignaciones.`});
+    else insights.push({kind:t.availableRate>=15?'good':'warn',icon:'💵',label:'Dinero disponible',copy:`Quedan ${fmt(t.available)}, equivalente al ${pct(t.availableRate)} del ingreso.`});
     if(t.debt>0)insights.push({kind:t.debtRate<=20?'good':t.debtRate<=30?'warn':'bad',icon:'💳',label:'Carga de deuda',copy:`Los pagos mensuales representan el ${pct(t.debtRate)} del ingreso.`});
-    const largest=[...month.expenses.map(x=>({...x,type:'gasto'})),...month.debtPayments.map(x=>({...x,type:'deuda'}))].sort((a,b)=>b.amount-a.amount)[0];if(largest)insights.push({kind:'info',icon:'📌',label:'Mayor compromiso',copy:`${largest.name} es el mayor ${largest.type}: ${fmt(largest.amount)}.`});
-    const emergency=appData.goals.find(g=>g.category==='emergency');if(emergency&&t.essential>0){const coverage=emergency.current/t.essential;insights.push({kind:coverage>=3?'good':coverage>=1?'warn':'bad',icon:'🛟',label:'Fondo de emergencia',copy:`El saldo informado cubre aproximadamente ${coverage.toFixed(1)} meses de gastos esenciales.`});}else insights.push({kind:'info',icon:'🛟',label:'Fondo de emergencia',copy:'Crea un objetivo de esta categoría para medir cuántos meses de necesidades cubre.'});
-    const keys=getMonthKeys();const index=keys.indexOf(key);if(index>0){const previous=calculateMonth(getMonth(keys[index-1]));const diff=t.available-previous.available;insights.push({kind:diff>=0?'good':'warn',icon:diff>=0?'📈':'📉',label:'Cambio mensual',copy:`El disponible ${diff>=0?'mejoró':'disminuyó'} ${fmt(Math.abs(diff))} frente a ${monthLabel(keys[index-1])}.`});}
+    if(t.extra>0)insights.push({kind:t.available<0?'bad':t.extraRate>20?'warn':'info',icon:'🧾',label:'Gastos extra del mes',copy:`Registraste ${fmt(t.extra)} en gastos extra (${pct(t.extraRate)} del ingreso). No se copiarán al siguiente mes ni se incluirán automáticamente en el escenario base.`});
+    const largest=[...month.expenses.map(x=>({...x,type:'gasto'})),...month.debtPayments.map(x=>({...x,type:'deuda'}))].sort((a,b)=>b.amount-a.amount)[0];
+    if(largest)insights.push({kind:'info',icon:'📌',label:'Mayor compromiso',copy:`${largest.name} es el mayor ${largest.type}: ${fmt(largest.amount)}.`});
+    const emergency=appData.goals.find(g=>g.category==='emergency');
+    if(emergency&&t.fixed>0){
+      const coverage=emergency.current/t.fixed;
+      insights.push({kind:coverage>=3?'good':coverage>=1?'warn':'bad',icon:'🛟',label:'Fondo de emergencia',copy:`El saldo informado cubre aproximadamente ${coverage.toFixed(1)} meses de gastos fijos registrados. No incluye gastos variables necesarios.`});
+    }else insights.push({kind:'info',icon:'🛟',label:'Fondo de emergencia',copy:'Crea un objetivo de esta categoría para comparar su saldo con tus gastos fijos mensuales.'});
+    const keys=getMonthKeys();const index=keys.indexOf(key);
+    if(index>0){const previous=calculateMonth(getMonth(keys[index-1]));const diff=t.available-previous.available;insights.push({kind:diff>=0?'good':'warn',icon:diff>=0?'📈':'📉',label:'Cambio mensual',copy:`El disponible ${diff>=0?'mejoró':'disminuyó'} ${fmt(Math.abs(diff))} frente a ${monthLabel(keys[index-1])}.`});}
     return insights;
   }
 
@@ -779,7 +799,7 @@
   }
 
   function renderHistoryTable(keys){
-    const body=qs('#history-table');clearElement(body);[...keys].reverse().forEach(key=>{const t=calculateMonth(getMonth(key));const tr=document.createElement('tr');[monthLabel(key),fmt(t.income),fmt(t.essential),fmt(t.discretionary),fmt(t.savings),fmt(t.debt),fmt(t.available)].forEach((value,index)=>{const td=text('td',value,index>0?'num':'');if(index===6)td.classList.add(t.available>=0?'green':'red');tr.append(td);});body.append(tr);});
+    const body=qs('#history-table');clearElement(body);[...keys].reverse().forEach(key=>{const t=calculateMonth(getMonth(key));const tr=document.createElement('tr');[monthLabel(key),fmt(t.income),fmt(t.fixed),fmt(t.extra),fmt(t.savings),fmt(t.debt),fmt(t.available)].forEach((value,index)=>{const td=text('td',value,index>0?'num':'');if(index===6)td.classList.add(t.available>=0?'green':'red');tr.append(td);});body.append(tr);});
   }
 
   function renderTrendChart(keys){
@@ -791,16 +811,24 @@
   }
 
   function renderProjectionChart(baseKey,month,t){
-    destroyChart('projection');const canvas=qs('#projection-chart');canvas.hidden=false;const fb=canvas.parentElement.querySelector('.chart-fallback');if(fb)fb.remove();if(!chartAvailable()){replaceCanvasFallback(canvas,'Los escenarios requieren el gráfico para visualizarse.');return;}const labels=Array.from({length:6},(_,i)=>monthLabel(addMonths(baseKey,i+1)));const debtPayments=futureDebtPayments(6);const nonDebt=t.essential+t.discretionary+t.savings;const base=labels.map((_,i)=>t.income-(nonDebt+debtPayments[i]));const conservative=labels.map((_,i)=>t.income*.95-((t.essential+t.discretionary)*1.05+t.savings+debtPayments[i]));const optimistic=labels.map((_,i)=>t.income-(t.essential+t.discretionary*.9+t.savings+debtPayments[i]));const colors=chartColors();charts.projection=new Chart(canvas,{type:'line',data:{labels,datasets:[{label:'Base',data:base,borderColor:'#185fa5',tension:.25},{label:'Conservador',data:conservative,borderColor:'#a32d2d',tension:.25},{label:'Optimista',data:optimistic,borderColor:'#35680f',tension:.25}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:colors.text,boxWidth:12}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{y:{ticks:{color:colors.text,callback:v=>fmt(v)},grid:{color:colors.grid}},x:{ticks:{color:colors.text,maxRotation:0},grid:{display:false}}}}});
+    destroyChart('projection');const canvas=qs('#projection-chart');canvas.hidden=false;const fb=canvas.parentElement.querySelector('.chart-fallback');if(fb)fb.remove();if(!chartAvailable()){replaceCanvasFallback(canvas,'Los escenarios requieren el gráfico para visualizarse.');return;}
+    const labels=Array.from({length:6},(_,i)=>monthLabel(addMonths(baseKey,i+1)));
+    const debtPayments=futureDebtPayments(6);
+    const recurringNonDebt=t.fixed+t.savings;
+    const base=labels.map((_,i)=>t.income-(recurringNonDebt+debtPayments[i]));
+    const conservative=labels.map((_,i)=>t.income*.95-(t.fixed*1.05+t.extra+t.savings+debtPayments[i]));
+    const optimistic=labels.map((_,i)=>t.income*1.03-(t.fixed+t.savings+debtPayments[i]));
+    const colors=chartColors();
+    charts.projection=new Chart(canvas,{type:'line',data:{labels,datasets:[{label:'Base: sin repetir extras',data:base,borderColor:'#185fa5',tension:.25},{label:'Conservador: repite extras',data:conservative,borderColor:'#a32d2d',tension:.25},{label:'Optimista',data:optimistic,borderColor:'#35680f',tension:.25}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:colors.text,boxWidth:12}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},scales:{y:{ticks:{color:colors.text,callback:v=>fmt(v)},grid:{color:colors.grid}},x:{ticks:{color:colors.text,maxRotation:0},grid:{display:false}}}}});
   }
 
   function exportData(){
-    const payload=JSON.stringify(appData,null,2);const blob=new Blob([payload],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`mis-finanzas-v2-${new Date().toISOString().slice(0,10)}.json`;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);showToast('Copia de seguridad exportada.');
+    const payload=JSON.stringify(appData,null,2);const blob=new Blob([payload],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`mis-finanzas-v3-${new Date().toISOString().slice(0,10)}.json`;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);showToast('Copia de seguridad exportada.');
   }
 
   function validateImport(raw){
     if(!raw||typeof raw!=='object')throw new Error('El archivo no contiene un objeto válido.');
-    if(raw.schemaVersion===SCHEMA_VERSION)return normalizeData(raw);
+    if(raw.schemaVersion===SCHEMA_VERSION||raw.schemaVersion===2)return normalizeData(raw);
     if(raw.meses&&typeof raw.meses==='object')return migrateLegacy(raw);
     throw new Error('La versión o estructura del archivo no es compatible.');
   }
